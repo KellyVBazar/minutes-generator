@@ -20,7 +20,7 @@ class ClickSignService:
             'Authorization': secret_tokens['clicksign_api_key']
         }
         self.__envelope_endpoint = f'{self.__base_url}/api/v3/envelopes'
-        self.__signers_endpoint = f'{self.__base_url}/envelopes/<envelope_id>/signers'
+        self.__signers_endpoint = f'{self.__base_url}/api/v3/envelopes/<envelope_id>/signers'
 
     def create_envelope(self, client_name: str, precatorio_number: str) -> str:
         body = {

@@ -27,7 +27,8 @@ def lambda_handler(event: Dict[str, Any], _context: context_.Context) -> Dict[st
 
 if __name__ == "__main__":  # pragma: no cover
     test_event = {
-        "card_id": "1167217322"
+        "card_id": "1171881390"
+        #1167217322"
     }
     response = lambda_handler({"body": json.dumps(test_event)}, None)
     print(response)
