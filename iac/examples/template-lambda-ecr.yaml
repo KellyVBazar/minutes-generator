@@ -1,0 +1,45 @@
+# AWSTemplateFormatVersion: '2010-09-09'
+# Transform: AWS::Serverless-2016-10-31
+
+# Parameters:
+#   Environment:
+#     Type: String
+#     Default: develop
+#     AllowedValues: [develop, production]
+
+# Conditions:
+#   IsProduction: !Equals [!Ref Environment, "production"]
+
+# Resources:
+# # Criação da Lambda com ECR
+#   ProjectName:
+#     Type: AWS::Serverless::Function
+#     Properties:
+#       PackageType: Image
+#       FunctionName: !If [IsProduction, <project-name>, <project-name>-sandbox]
+#       Timeout: 60
+#       ImageUri: !Sub ${AWS::AccountId}.dkr.ecr.us-east-1.amazonaws.com/<repository-name-ecr>:latest
+
+
+# # Role da Lambda
+#   FunctionExecutionRole:
+#     Type: AWS::IAM::Role
+#     Properties:
+#       AssumeRolePolicyDocument:
+#         Version: '2012-10-17'
+#         Statement:
+#           - Effect: Allow
+#             Principal:
+#               Service: lambda.amazonaws.com
+#             Action: sts:AssumeRole
+#       Policies:
+#         - PolicyName: ECRAccessPolicy
+#           PolicyDocument:
+#             Version: '2012-10-17'
+#             Statement:
+#               - Effect: Allow
+#                 Action:
+#                   - ecr:GetDownloadUrlForLayer
+#                   - ecr:BatchGetImage
+#                   - ecr:BatchCheckLayerAvailability
+#                 Resource: !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/<repository-name-ecr>

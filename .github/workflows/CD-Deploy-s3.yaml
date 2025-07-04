@@ -1,0 +1,57 @@
+name: Deploy
+on:
+  pull_request:
+    types:
+      - closed
+jobs:
+  Build-Release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Set repository name
+        run: |
+          echo "REPO=${GITHUB_REPOSITORY//bazar-do-consorcio'/'}" >> $GITHUB_ENV
+      - name: Deploy to S3 - Staging
+        if: github.BASE_REF != 'main' || github.REF_NAME != 'main'
+        uses: jakejarvis/s3-sync-action@master
+        with:
+          args: --follow-symlinks --delete
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_BUCKET_NAME_STAGING }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_S3_STAGING }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_S3_STAGING }}
+          SOURCE_DIR: "$GITHUB_WORKSPACE/"
+      - name: Start EC2 - Staging
+        if: github.BASE_REF != 'main' || github.REF_NAME != 'main'
+        run: |
+          aws ec2 start-instances --instance-ids ${{secrets.AWS_EC2_INSTANCE_ID_STAGING }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_EC2_STAGING }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_EC2_STAGING }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      - name: Deploy to S3 - Production
+        if: github.BASE_REF == 'main' || github.REF_NAME == 'main'
+        uses: jakejarvis/s3-sync-action@master
+        with:
+          args: --follow-symlinks --delete
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_BUCKET_NAME }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_S3 }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_S3 }}
+          SOURCE_DIR: "$GITHUB_WORKSPACE/"
+      - name: Start EC2 - Production
+        if: github.BASE_REF == 'main' || github.REF_NAME == 'main'
+        run: |
+          aws ec2 start-instances --instance-ids ${{secrets.AWS_EC2_INSTANCE_ID }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_EC2 }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_EC2 }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}

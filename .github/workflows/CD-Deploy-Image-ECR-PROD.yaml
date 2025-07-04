@@ -1,0 +1,50 @@
+name: Deploy Image to existing ECR in AWS production
+
+
+on:
+  release:
+    types: [created]
+
+env:
+  AWS_REGION: "us-east-1"
+  DOCKER_IMAGE: <repository-name-ecr>
+  RELEASE_VERSION: latest
+
+
+permissions:
+  id-token: write
+  contents: read
+
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+  
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials from OIDC provider - PROD
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{secrets.ROLE_OIDC_<PROJECT_NAME>_PROD}}
+        aws-region: us-east-1
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.11'
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build Docker image and tag image 
+      id: build-image
+      run: |
+        ls -l
+        docker buildx build -t ${{ secrets.AWS_ACCOUNT_ID_PROD }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.DOCKER_IMAGE }}:${{ env.RELEASE_VERSION }} --push .

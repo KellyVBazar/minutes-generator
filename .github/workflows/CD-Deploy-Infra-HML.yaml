@@ -1,0 +1,42 @@
+name: Deploy Infrastructure CloudFormation in AWS Account BZR AI HML
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    env:
+      AWS_REGION: us-east-1
+  
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure AWS credentials from OIDC provider - Develop
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{secrets.ROLE_OIDC_STAGING}}
+        aws-region: us-east-1
+
+   
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.11'
+
+    - name: Build SAM application
+      run: sam build -t ./templates/template-infra.yaml
+
+    - name: Deploy SAM application - Develop
+      run: |
+        sam deploy -t ./templates/template-infra.yaml --no-confirm-changeset --no-fail-on-empty-changeset --config-file samconfig-bzrai-infra.toml --parameter-overrides Environment=develop

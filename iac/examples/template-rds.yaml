@@ -1,0 +1,92 @@
+# AWSTemplateFormatVersion: "2010-09-09"
+# Description: Criação de RDS PostgreSQL utilizando uma VPC e subnets existentes
+
+# Parameters:
+#   Environment:
+#     Type: String
+#     Default: staging
+#     AllowedValues: [staging, production]
+
+
+# Resources:
+#   # Criação da instância de banco de dados RDS
+#   MDPrecatoriodb:
+#     Type: AWS::RDS::DBInstance
+#     Properties:
+#       DBInstanceIdentifier: !If [IsProduction, "<project-name>", "<project-name>-qa"]
+#       AllocatedStorage: '50'
+#       StorageType: "gp3"
+#       MaxAllocatedStorage: 100
+#       DBInstanceClass:  !If [IsProduction, db.t4g.micro, db.t4g.micro]
+#       Engine: "postgres"
+#       MasterUsername: "postgres"
+#       ManageMasterUserPassword: true
+#       StorageEncrypted: true 
+#       MasterUserSecret:
+#         KmsKeyId: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/rds
+#       VPCSecurityGroups:
+#         - Ref: ProjectnameDBSGCIDRIP
+#       DBSubnetGroupName: !Ref DBSubnetGroup
+#       PubliclyAccessible: false 
+#       BackupRetentionPeriod: 7
+#       PreferredBackupWindow: "16:19-16:49"
+#       EnablePerformanceInsights: true
+#       PerformanceInsightsRetentionPeriod: 7
+#       MonitoringInterval: 10
+#       MonitoringRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/rds-monitoring-role
+#       EnableCloudwatchLogsExports:
+#         - "postgresql"
+#         - "upgrade"
+#       MultiAZ: false 
+#       PreferredMaintenanceWindow: !If [IsProduction, "Sat:03:00-Sat:03:30", "Mon:06:00-Mon:07:00"]
+#       AutoMinorVersionUpgrade: true
+#     DeletionPolicy: Snapshot
+#     UpdateReplacePolicy: Snapshot
+
+
+#   # Criação do Subnet Group para o RDS usando subnets existentes
+#   DBSubnetGroup:
+#     Type: AWS::RDS::DBSubnetGroup
+#     Properties:
+#       DBSubnetGroupDescription: "Subnets associadas ao banco de dados RDS"
+#       DBSubnetGroupName: "subnets-db-platfotm" 
+#       SubnetIds: 
+#         - !If [IsProduction, "{{SUBNET_A_PROD}}", "{{SUBNET_A_STAGING}}"]
+#         - !If [IsProduction, "{{SUBNET_B_PROD}}", "{{SUBNET_B_STAGING}}"]
+
+#   # Criação do Security Group para o RDS
+#   ProjectnameDBSGCIDRIP:
+#     Type: AWS::EC2::SecurityGroup
+#     Properties:
+#       GroupDescription: "Ingress para o banco de dados via CIDR IP"
+#       GroupName: "SG-DB-<project-name>"
+#       SecurityGroupIngress:
+#         - CidrIp: !If [IsProduction, "<ip-subnet-prod>" , "<ip-subnet-sandbox>"]
+#           IpProtocol: tcp
+#           FromPort: 5432
+#           ToPort: 5432
+#           Description: "Allow access subnet backend A platform"
+#         - CidrIp: !If [IsProduction, "<ip-subnet-prod>" , "<ip-subnet-sandbox>"]
+#           IpProtocol: tcp
+#           FromPort: 5432
+#           ToPort: 5432
+#           Description: "Allow access subnet backend B platform"
+#         - CidrIp: !If [IsProduction, "10.100.0.9/32" , "10.31.10.0/24"]
+#           IpProtocol: tcp
+#           FromPort: 5432
+#           ToPort: 5432
+#           Description: "Allow Zero Trust Tunnel A Access"
+#         - CidrIp: !If [IsProduction, "10.100.0.22/32" , "10.31.11.0/24"]
+#           IpProtocol: tcp
+#           FromPort: 5432
+#           ToPort: 5432
+#           Description: "Allow Zero Trust Tunnel B Access"
+#       VpcId: !If [IsProduction, "{{VPC_ID_PROD}}", "{{VPC_ID_STAGING}}"]
+#       Tags:
+#         - Key: Name
+#           Value: "SG-DB-<project-name>"
+
+
+
+# Conditions:
+#   IsProduction: !Equals [!Ref Environment, "production"]

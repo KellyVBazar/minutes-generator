@@ -1,0 +1,55 @@
+name: Deploy RDS Application in develop
+
+on:
+  push:
+    branches:
+      - staging
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+  
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure AWS credentials from OIDC provider - Staging
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{secrets.ROLE_OIDC_<PROJECT_NAME>_STAGING}}
+        aws-region: us-east-1
+
+
+    - name: Replace SG and Subnets in template file - Staging
+      run: |
+        cd $GITHUB_WORKSPACE/iac/
+        sed -i 's|{{VPC_ID_STAGING}}|${{ secrets.VPC_ID_PLATFORM_<PROJECT_NAME>_STAGING }}|g' template-rds.yaml
+        sed -i 's|{{SUBNET_A_STAGING}}|${{ secrets.SUBNET_A_DB_PLATFORM_<PROJECT_NAME>_STAGING }}|g' template-rds.yaml
+        sed -i 's|{{SUBNET_B_STAGING}}|${{ secrets.SUBNET_B_DB_PLATFORM_<PROJECT_NAME>_STAGING }}|g' template-rds.yaml
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.11'
+
+    - name: Build SAM application
+      run: |
+        cd $GITHUB_WORKSPACE/iac/
+        sam build -t template-rds.yaml
+
+    - name: Deploy SAM application - Staging
+      run: |
+        cd $GITHUB_WORKSPACE/iac/
+        sam deploy -t template-rds.yaml \
+          --stack-name infra-<project-name>-rds \
+          --no-confirm-changeset \
+          --no-fail-on-empty-changeset \
+          --parameter-overrides Environment=staging

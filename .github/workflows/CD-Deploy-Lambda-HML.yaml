@@ -1,0 +1,57 @@
+name:  Deploy Lambda and API Gateway in develop
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy_applications:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.11" ]
+
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials from OIDC provider
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{secrets.ROLE_OIDC_STAGING}}
+          aws-region: us-east-1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Replace SG and Subnets in template file - Staging
+        run: |
+          cd $GITHUB_WORKSPACE/iac/
+          sed -i 's|{{ACM_DOMAIN_STAGING}}|${{ secrets.ACM_DOMAIN_STAGING }}|g' template-lambda-and-api-gateway.yaml
+          sed -i 's|{{DNS_API_STAGING}}|${{ secrets.DNS_API_STAGING }}|g' template-lambda-and-api-gateway.yaml
+          sed -i 's|{{SECURITY_GROUP_STAGING}}|${{ secrets.SECURITY_GROUP_STAGING }}|g' template-lambda-and-api-gateway.yaml
+          sed -i 's|{{SUBNET_A_STAGING}}|${{secrets.SUBNET_A_STAGING}}|g' template-lambda-and-api-gateway.yaml
+          sed -i 's|{{SUBNET_B_STAGING}}|${{secrets.SUBNET_B_STAGING}}|g' template-lambda-and-api-gateway.yaml
+
+      - name: Build SAM application
+        run: |
+          cd $GITHUB_WORKSPACE/iac/ 
+          sam build -t template-lambda-and-api-gateway.yaml
+
+      - name: Deploy SAM Application
+        run: |
+          cd $GITHUB_WORKSPACE/iac/
+          sam deploy -t template-lambda-and-api-gateway.yaml \
+          --no-confirm-changeset \
+          --no-fail-on-empty-changeset \
+          --stack-name <project-name> \
+          --resolve-s3 --resolve-image-repos --capabilities CAPABILITY_IAM \
+          --parameter-overrides Environment=develop

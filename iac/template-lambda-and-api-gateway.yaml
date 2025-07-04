@@ -1,0 +1,194 @@
+# AWSTemplateFormatVersion: '2010-09-09'
+# Transform: AWS::Serverless-2016-10-31
+# Description: >
+#   This AWS SAM template deploys the necessary AWS Lambda functions and resources
+#   for the cloud-based document processing system.
+
+# Parameters:
+#   Environment:
+#     Type: String
+#     Default: develop
+#     AllowedValues: [develop, production]
+#     Description: Deployment environment for the application
+
+
+# Globals:
+#   Function:
+#     Layers:
+#        - !Ref CommonLayer
+#        - !Ref LibLayer
+#     Environment:
+#       Variables:
+#         LOG_LEVEL: !If [IsProduction, "INFO", "DEBUG"]
+
+
+# Resources:
+#   CommonLayer:
+#     Type: AWS::Serverless::LayerVersion
+#     Properties:
+#       LayerName: projeto-common-layer
+#       ContentUri: ../src/common_layer
+#       CompatibleRuntimes:
+#         - python3.11
+#       Description: Layer for common modules in Project <project-name>
+
+#   LibLayer:
+#     Type: AWS::Serverless::LayerVersion
+#     Properties:
+#       LayerName: projeto-lib-layer
+#       ContentUri: ../src/lib_layer
+#       CompatibleRuntimes:
+#         - python3.11
+#       Description: Layer for all libs used in Project <project-name>
+#     Metadata:
+#       BuildMethod: python3.11
+
+#   # API Gateway
+#   ApiGatewayApi:
+#     Type: AWS::Serverless::Api
+#     Properties:
+#       Name: !If [IsProduction, "<project-name-prod>-API", "<project-name>-sandbox-API"]
+#       StageName: !If [ IsProduction, "Prod", "Sandbox"]
+#       Description: API utilizada para acionar <project-name>
+#       EndpointConfiguration:
+#         Type: REGIONAL
+#       Auth:
+#         ApiKeyRequired: true
+#       MethodSettings:
+#         - LoggingLevel: INFO
+#           DataTraceEnabled: true
+#           MetricsEnabled: true
+#           ResourcePath: "/*"
+#           HttpMethod: "*"
+
+# # # Deployment da API
+#   ProjectNameDeployment:
+#     Type: AWS::ApiGateway::Deployment
+#     Properties:
+#       RestApiId: !Ref ApiGatewayApi
+#     DependsOn:
+#       - LambdaName
+
+#   # API Key e Usage Plan
+#   ApiKey:
+#     Type: AWS::ApiGateway::ApiKey
+#     Properties:
+#       Name: !If [IsProduction, "<project-name>-api-Key", "<project-name>-api-sandbox-key"]
+#       Description: CloudFormation API Key for <project-name>
+#       Enabled: true
+#       StageKeys:
+#         - RestApiId: !Ref ApiGatewayApi
+#           StageName: !If [ IsProduction, "Prod", "Sandbox" ]
+#     DependsOn: 
+#       - ProjectNameDeployment
+#       - ApiGatewayApi
+
+#   UsagePlanProjectName:
+#     Type: AWS::ApiGateway::UsagePlan
+#     Properties:
+#       ApiStages:
+#         - ApiId: !Ref ApiGatewayApi
+#           Stage: !If [IsProduction, "Prod", "Sandbox"]
+#       Description: Usage Plan for <project-name> API
+#       Quota:
+#         Limit: 5000
+#         Period: MONTH
+#       Throttle:
+#         BurstLimit: 200
+#         RateLimit: 100
+#       UsagePlanName: !If [IsProduction, "<project-name>-UsagePlan", "<project-name>-sandbox-UsagePlan"]
+#     DependsOn:
+#       - LambdaName
+#       - ProjectNameDeployment
+#       - ApiGatewayApi
+
+#   UsagePlanKey:
+#     Type: AWS::ApiGateway::UsagePlanKey
+#     Properties:
+#       KeyId: !Ref ApiKey
+#       KeyType: API_KEY
+#       UsagePlanId: !Ref UsagePlanProjectName
+#     DependsOn: ApiGatewayApi
+
+# # Lambda
+#   LambdaName:
+#     Type: AWS::Serverless::Function
+#     Properties:
+#       FunctionName: !If [ IsProduction, "<lambda-name>", "<lambda-name>-sandbox" ]
+#       CodeUri: ../src/Lambda_package
+#       Handler: app.lambda_handler
+#       Runtime: python3.11
+#       Timeout: 300 # 5 minutos, se for manter o padrão 3sec, basta excluir essa linha.
+#       Role: !GetAtt LambdaNameRole.Arn
+#       Events:
+#         LambdaNameEvent:
+#           Type: Api
+#           Properties:
+#             RestApiId: !Ref ApiGatewayApi
+#             Path: /endpoint-name
+#             Method: POST
+#       Environment:
+#         Variables:
+#           APP_NAME: "<lambda-name>"
+
+#   LambdaNameRole:
+#     Type: AWS::IAM::Role
+#     Properties:
+#       AssumeRolePolicyDocument:
+#         Version: '2012-10-17'
+#         Statement:
+#           - Effect: Allow
+#             Principal:
+#               Service: lambda.amazonaws.com
+#             Action: sts:AssumeRole
+#       Policies:
+#         - PolicyName: <lambda-name>-policy
+#           PolicyDocument:
+#             Version: '2012-10-17'
+#             Statement:
+#               - Effect: Allow
+#                 Action:
+#                   - logs:CreateLogGroup
+#                   - logs:CreateLogStream
+#                   - logs:PutLogEvents
+#                 Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/<lambda-name>:*"
+#       ManagedPolicyArns:
+#         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+
+# Conditions:
+#   IsProduction: !Equals [!Ref Environment, "production"]
+
+# Outputs:
+#   LambdaName:
+#     Description: ARN da função Lambda LambdaName
+#     Value: !GetAtt LambdaName.Arn
+
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  GeradorDocumentos:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !If [ IsProduction, "generate_clicksign_document", "generate_clicksign_document_sandbox" ]
+      CodeUri: ../src/generate_clicksign_document
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Timeout: 90
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          SECRET_NAME: secret_tokens
+          AWS_REGION: us-east-1
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: arn:aws:secretsmanager:us-east-1:123456789012:secret:secret_tokens
+
+    Metadata:
+      BuildMethod: python3.11
+      BuildProperties:
+        BuildArgs:
+          - -r
+          - ../requirements.txt

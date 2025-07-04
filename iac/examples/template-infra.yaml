@@ -1,0 +1,301 @@
+# AWSTemplateFormatVersion: '2010-09-09'
+# Transform: AWS::Serverless-2016-10-31
+# Description: Infraestrutura para o projeto <PROJECT_NAME>
+
+# Parameters:
+#   ZonaA:
+#     Type: String
+#     Description: Zona de disponibilidade para a sub-rede A
+#     Default: us-east-1a  
+#   ZonaB:
+#     Type: String
+#     Description: Zona de disponibilidade para a sub-rede B
+#     Default: us-east-1b
+#   Environment:
+#     Type: String
+#     Default: develop
+#     AllowedValues: [develop, production]
+
+#   KeyNameParameter:
+#     Type: AWS::EC2::KeyPair::KeyName
+#     Description: Nome do par de chaves EC2 para acessar a instância
+#     Default: AMI-EC2-NAT-Gateway
+
+# Resources:
+#   VPCPROJECTNAME:
+#     Type: AWS::EC2::VPC
+#     Properties:
+#       CidrBlock: !If [IsProduction, <ip-vpc-prod>, <ip-vpc-sandbox>]
+#       EnableDnsSupport: true
+#       EnableDnsHostnames: true
+#       Tags:
+#         - Key: Name
+#           Value: VPC-<PROJECT_NAME>
+  
+#   InternetGateway:
+#     Type: AWS::EC2::InternetGateway
+#     Properties:
+#       Tags:
+#         - Key: Name
+#           Value: IGW-<PROJECT_NAME>
+  
+#   AttachGateway:
+#     Type: AWS::EC2::VPCGatewayAttachment
+#     Properties:
+#       VpcId: !Ref VPCPROJECTNAME
+#       InternetGatewayId: !Ref InternetGateway
+
+#   PrivateRouteTableA:
+#     Type: AWS::EC2::RouteTable
+#     Properties:
+#       VpcId: !Ref VPCPROJECTNAME
+#       Tags:
+#         - Key: Name
+#           Value: RT-Private-Bazar-<PROJECT_NAME>-A
+
+#   PrivateRouteTableB:
+#     Type: AWS::EC2::RouteTable
+#     Properties:
+#       VpcId: !Ref VPCPROJECTNAME
+#       Tags:
+#         - Key: Name
+#           Value: RT-Private-Bazar-<PROJECT_NAME>-B
+
+#   PublicRouteTable:
+#     Type: AWS::EC2::RouteTable
+#     Properties:
+#       VpcId: !Ref VPCPROJECTNAME
+#       Tags:
+#         - Key: Name
+#           Value: RT-Public-Bazar-<PROJECT_NAME>
+
+#   PublicSubnetA:
+#     Type: AWS::EC2::Subnet
+#     Properties:
+#       VpcId: !Ref VPCPROJECTNAME
+#       CidrBlock: !If [IsProduction, <ip-sub-pub-a-prod>, <ip-sub-pub-a-sandbox>]
+#       AvailabilityZone: !Ref ZonaA
+#       Tags:
+#         - Key: Name
+#           Value: subnet-pub-a-bazar-<PROJECT_NAME>
+
+#   PublicSubnetB:
+#     Type: AWS::EC2::Subnet
+#     Properties:
+#       VpcId: !Ref VPCPROJECTNAME
+#       CidrBlock: !If [IsProduction, <ip-sub-pub-b-prod> ,<ip-sub-pub-b-sandbox>]
+#       AvailabilityZone: !Ref ZonaB
+#       Tags:
+#         - Key: Name
+#           Value: subnet-pub-b-bazar-<PROJECT_NAME>
+
+#   PrivateSubnetA:
+#     Type: AWS::EC2::Subnet
+#     Properties:
+#       VpcId: !Ref VPCPROJECTNAME
+#       CidrBlock: !If [IsProduction, <ip-sub-priv-a-prod>, <ip-sub-priv-a-sandbox>]
+#       AvailabilityZone: !Ref ZonaA
+#       Tags:
+#         - Key: Name
+#           Value: subnet-priv-a-bazar-<PROJECT_NAME>
+
+#   PrivateSubnetB:
+#     Type: AWS::EC2::Subnet
+#     Properties:
+#       VpcId: !Ref VPCPROJECTNAME
+#       CidrBlock: !If [IsProduction, <ip-sub-priv-b-prod>, <ip-sub-priv-b-sandbox>]
+#       AvailabilityZone: !Ref ZonaB
+#       Tags:
+#         - Key: Name
+#           Value: subnet-priv-b-bazar-<PROJECT_NAME>
+
+#   PublicRoute:
+#     Type: AWS::EC2::Route
+#     Properties:
+#       RouteTableId: !Ref PublicRouteTable
+#       DestinationCidrBlock: 0.0.0.0/0
+#       GatewayId: !Ref InternetGateway
+
+#   PublicSubnetARouteTableAssociation:
+#     Type: AWS::EC2::SubnetRouteTableAssociation
+#     Properties:
+#       SubnetId: !Ref PublicSubnetA
+#       RouteTableId: !Ref PublicRouteTable
+
+#   PublicSubnetBRouteTableAssociation:
+#     Type: AWS::EC2::SubnetRouteTableAssociation
+#     Properties:
+#       SubnetId: !Ref PublicSubnetB
+#       RouteTableId: !Ref PublicRouteTable
+    
+#   PrivateSubnetARouteTableAssociation:
+#     Type: AWS::EC2::SubnetRouteTableAssociation
+#     Properties:
+#       SubnetId: !Ref PrivateSubnetA
+#       RouteTableId: !Ref PrivateRouteTableA
+
+#   PrivateSubnetBRouteTableAssociation:
+#     Type: AWS::EC2::SubnetRouteTableAssociation
+#     Properties:
+#       SubnetId: !Ref PrivateSubnetB
+#       RouteTableId: !Ref PrivateRouteTableB
+
+#   SSHSecurityGroup:
+#     Type: AWS::EC2::SecurityGroup
+#     Properties:
+#       GroupName: SG-EC2
+#       GroupDescription: Allow SSH access ZeroTrust
+#       VpcId: !Ref VPCPROJECTNAME
+#       SecurityGroupIngress:
+#         - IpProtocol: tcp
+#           FromPort: 22
+#           ToPort: 22
+#           CidrIp: 10.100.0.22/32
+#         - IpProtocol: tcp
+#           FromPort: 22
+#           ToPort: 22
+#           CidrIp: 10.100.0.9/32
+#         - IpProtocol: -1  # Protocolo 'All'
+#           CidrIp: 0.0.0.0/0 
+
+#   LambdasSecurityGroup:
+#     Type: AWS::EC2::SecurityGroup
+#     Properties:
+#       GroupName: SG-Lambdas
+#       GroupDescription: Allow SSH access ZeroTrust
+#       VpcId: !Ref VPCPROJECTNAME
+#       SecurityGroupEgress:
+#         - IpProtocol: -1  # Protocolo 'All'
+#           CidrIp: 0.0.0.0/0 
+
+#   EC2NATInstanceA:
+#     Type: AWS::EC2::Instance
+#     Properties:
+#       ImageId: !If [IsProduction, ami-05687b191d96c5ee7 ,ami-099ec6b526affe5f9]
+#       InstanceType: t4g.nano
+#       KeyName: !Ref KeyNameParameter
+#       SecurityGroupIds:
+#         - !GetAtt SSHSecurityGroup.GroupId
+#       SubnetId: !Ref PublicSubnetA
+#       SourceDestCheck: false
+#       Tags:
+#         - Key: Name
+#           Value: !If [IsProduction, EC2-NAT-Gateway-<PROJECT_NAME>-A, EC2-NAT-Gateway-<PROJECT_NAME>-HML-A]
+
+#   EC2NATInstanceB:
+#     Type: AWS::EC2::Instance
+#     Properties:
+#       ImageId: !If [IsProduction, ami-05687b191d96c5ee7 ,ami-099ec6b526affe5f9]
+#       InstanceType: t4g.nano
+#       KeyName: !Ref KeyNameParameter
+#       SecurityGroupIds:
+#         - !GetAtt SSHSecurityGroup.GroupId
+#       SubnetId: !Ref PublicSubnetB
+#       SourceDestCheck: false
+#       Tags:
+#         - Key: Name
+#           Value: !If [IsProduction, EC2-NAT-Gateway-<PROJECT_NAME>-B, EC2-NAT-Gateway-<PROJECT_NAME>-HML-B]
+
+#   ElasticIPA:
+#     Type: AWS::EC2::EIP
+#     Properties:
+#       Domain: vpc
+#       Tags:
+#         - Key: Name
+#           Value: !If [IsProduction, EC2-NAT-Gateway-<PROJECT_NAME>-A, EC2-NAT-Gateway-<PROJECT_NAME>-HML-A]
+
+#   ElasticIPB:
+#     Type: AWS::EC2::EIP
+#     Properties:
+#       Domain: vpc
+#       Tags:
+#         - Key: Name
+#           Value: !If [IsProduction, EC2-NAT-Gateway-<PROJECT_NAME>-B, EC2-NAT-Gateway-<PROJECT_NAME>-HML-B]
+
+#   EIPAssociationA:
+#     Type: AWS::EC2::EIPAssociation
+#     Properties:
+#       AllocationId: !GetAtt ElasticIPA.AllocationId
+#       InstanceId: !Ref EC2NATInstanceA
+
+#   EIPAssociationB:
+#     Type: AWS::EC2::EIPAssociation
+#     Properties:
+#       AllocationId: !GetAtt ElasticIPB.AllocationId
+#       InstanceId: !Ref EC2NATInstanceB
+
+#   PrivateRouteA:
+#     Type: AWS::EC2::Route
+#     Properties:
+#       RouteTableId: !Ref PrivateRouteTableA
+#       DestinationCidrBlock: 0.0.0.0/0
+#       InstanceId: !Ref EC2NATInstanceA 
+
+#   PrivateRouteB:
+#     Type: AWS::EC2::Route
+#     Properties:
+#       RouteTableId: !Ref PrivateRouteTableB
+#       DestinationCidrBlock: 0.0.0.0/0
+#       InstanceId: !Ref EC2NATInstanceB
+
+#   # Route53DNS: 
+#   #   Type: "AWS::Route53::HostedZone"
+#   #   Properties: 
+#   #     HostedZoneConfig: 
+#   #       Comment: 'Criacao do Hosted Zone privado'
+#   #     Name: !If [IsProduction, "bazar.technology", "bazar-sandbox.technology"]
+#   #     VPCs: 
+#   #       - 
+#   #         VPCId: !Ref VPCPROJECTNAME
+#   #         VPCRegion: 'us-east-1'
+
+#   # CertificateBazar: 
+#   #   Type: "AWS::CertificateManager::Certificate"
+#   #   Properties: 
+#   #     DomainName: !If [IsProduction, "*.bazar.technology", "*.bazar-sandbox.technology"]
+#   #     ValidationMethod: DNS
+#   #
+# Conditions:
+#   IsDevelop: !Equals
+#     - !Ref Environment
+#     - develop
+#   IsProduction: !Equals
+#     - !Ref Environment
+#     - production
+
+# Outputs:
+#   # CertificateArn:
+#   #   Description: "ARN do Certificado SSL"
+#   #   Value: !Ref CertificateBazar
+#   #   Export:
+#   #     Name: "BazarCertificateArn"
+
+#   # HostedZoneId:
+#   #   Description: "ID da Zona privada ROUTE53"
+#   #   Value: !Ref Route53DNS
+#   #   Export:
+#   #     Name: "BazarHostedZoneId"
+
+#   LambdasSecurityGroup:
+#     Description: "ID SG Lambdas"
+#     Value: !Ref LambdasSecurityGroup
+#     Export:
+#       Name: "LambdasSecurityGroup"
+
+#   SubnetLambdasPrivA:
+#     Description: "ID Subnet Priv A"
+#     Value: !Ref PrivateSubnetA
+#     Export:
+#       Name: "SubnetLambdasPrivA"
+
+#   SubnetLambdasPrivB:
+#     Description: "ID Subnet Priv B"
+#     Value: !Ref PrivateSubnetB
+#     Export:
+#       Name: "SubnetLambdasPrivB"
+
+#   VPCPROJECTNAME:
+#     Description: "VPC <PROJECT_NAME>"
+#     Value: !Ref VPCPROJECTNAME
+#     Export:
+#       Name: "VPCPROJECTNAME"
