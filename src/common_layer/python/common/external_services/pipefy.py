@@ -21,14 +21,15 @@ class PipefyService:
         if variables:
             body["variables"] = variables
 
-        response = requests.post(self.__base_url, json=body, headers=self.__headers)
-        content = response.json()
+        try:
+            response = requests.post(self.__base_url, json=body, headers=self.__headers)
+            response.raise_for_status()
+            content = response.json()
+        except requests.RequestException as e:
+            logger.error(f"Requisição ao Pipefy retornou erro {self.__base_url}: {e}")
+            raise e
 
-        if response.status_code != 200:
-            message = f"Requisição ao Pipefy retornou status {response.status_code} | content: {content}"
-            logger.error(message)
-            raise InternalErrorException(message)
-        elif 'errors' in content or 'error' in content:
+        if 'errors' in content or 'error' in content:
             message = f"Requisição ao Pipefy retornou erro {content}"
             logger.error(message)
             raise InternalErrorException(message)

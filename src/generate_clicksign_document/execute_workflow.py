@@ -33,7 +33,7 @@ class TermsGeneration:
 
     @staticmethod
     def __parse_birthday(birthday_str: str) -> str:
-        """Converte data em formato brasileiro ou americano para ISO-8601."""
+        """Converts date in Brazilian or American format to ISO-8601."""
         for fmt in ("%d/%m/%Y", "%m/%d/%Y"):
             try:
                 return datetime.strptime(birthday_str, fmt).date().strftime("%Y-%m-%d")

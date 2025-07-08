@@ -36,12 +36,12 @@ class ClickSignService:
             }
         }
 
-        response = requests.post(self.__envelope_endpoint, json=body, headers=self.__headers)
-
-        if response.status_code != 201:
-            message = f'Requisição para criar envelope no clicksign falhou: {response.json()}'
-            logger.error(message)
-            raise InternalErrorException(message)
+        try:
+            response = requests.post(self.__envelope_endpoint, json=body, headers=self.__headers)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            logger.error(f"Falha na requisição {self.__base_url}: {e}")
+            raise e
 
         return response.json().get('data', {}).get('id')
 
@@ -61,12 +61,11 @@ class ClickSignService:
             }
         }
 
-        response = requests.post(
-            self.__signers_endpoint.replace(self.ENVELOPE_ID, envelope_id), json=body, headers=self.__headers)
-
-        if response.status_code != 201:
-            message = f'Requisição para criar signatário no clicksign falhou: {response.json()}'
-            logger.error(message)
-            raise InternalErrorException(message)
+        try:
+            response = requests.post(self.__signers_endpoint.replace(self.ENVELOPE_ID, envelope_id), json=body, headers=self.__headers)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            logger.error(f"Requisição para criar envelope no clicksign falhou: {self.__signers_endpoint}: {e}")
+            raise e
 
         return response.json().get('data', {}).get('id')

@@ -7,7 +7,7 @@ from common.logger_handler import logger
 from common.constants import HTTPStatusCodes
 from common.utils import set_lambda_response
 
-from get_pipefy import TermsGeneration
+from execute_workflow import TermsGeneration
 
 def lambda_handler(event: Dict[str, Any], _context: context_.Context) -> Dict[str, Any]:
     logger.info(f"Recebido evento: {event}")
